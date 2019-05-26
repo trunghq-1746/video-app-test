@@ -227,7 +227,7 @@ public class Camera2BasicFragment extends Fragment
         public void onImageAvailable(ImageReader reader) {
 
 //            mBackgroundHandler.post(new ImageSaver(reader.acquireNextImage(), mFile));
-            Image image = reader.acquireLatestImage();
+            Image image = reader.acquireNextImage();
             //我们可以将这帧数据转成字节数组，类似于Camera1的PreviewCallback回调的预览帧数据
             if (image == null) {
                 return;
@@ -299,7 +299,7 @@ public class Camera2BasicFragment extends Fragment
                     }
                 }
             }
-            FFmpegHandler.getInstance().pushCameraData(yBytes, yBytes.length, uBytes, uBytes.length, vBytes, vBytes.length);
+            FFmpegHandler.getInstance().pushCameraData(0, yBytes, yBytes.length, uBytes, uBytes.length, vBytes, vBytes.length);
             image.close();
         }
 
@@ -405,6 +405,8 @@ public class Camera2BasicFragment extends Fragment
 
     };
 
+    private int curFilter = 0;
+
     /**
      * Shows a {@link Toast} on the UI thread.
      *
@@ -485,6 +487,7 @@ public class Camera2BasicFragment extends Fragment
     public void onViewCreated(final View view, Bundle savedInstanceState) {
         view.findViewById(R.id.picture).setOnClickListener(this);
         view.findViewById(R.id.info).setOnClickListener(this);
+        view.findViewById(R.id.buttonChangeFilter).setOnClickListener(this);
         mTextureView = (AutoFitTextureView) view.findViewById(R.id.texture);
     }
 
@@ -494,11 +497,12 @@ public class Camera2BasicFragment extends Fragment
         mFile = new File(getActivity().getExternalFilesDir(null), "pic.jpg");
     }
 
+
     @Override
     public void onResume() {
         super.onResume();
         startBackgroundThread();
-        FFmpegHandler.getInstance().init("rtmp://192.168.31.134:1935/live/room");
+        FFmpegHandler.getInstance().init("rtmp://192.168.1.241/live");
 
         // When the screen is turned off and turned back on, the SurfaceTexture is already
         // available, and "onSurfaceTextureAvailable" will not be called. In that case, we can open
@@ -831,6 +835,11 @@ public class Camera2BasicFragment extends Fragment
         lockFocus();
     }
 
+    private void changeFilter() {
+        curFilter ++;
+        FFmpegHandler.getInstance().changeFilter(curFilter);
+    }
+
     /**
      * Lock the focus as the first step for a still image capture.
      */
@@ -951,6 +960,10 @@ public class Camera2BasicFragment extends Fragment
         switch (view.getId()) {
             case R.id.picture: {
                 takePicture();
+                break;
+            }
+            case R.id.buttonChangeFilter: {
+                changeFilter();
                 break;
             }
             case R.id.info: {

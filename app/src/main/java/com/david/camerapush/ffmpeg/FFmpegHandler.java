@@ -33,7 +33,9 @@ public class FFmpegHandler {
 
     public native int init(String outUrl);
 
-    public native int pushCameraData(byte[] buffer,int ylen,byte[] ubuffer,int ulen,byte[] vbuffer,int vlen);
+    public native int pushCameraData(int n,byte[] buffer,int ylen,byte[] ubuffer,int ulen,byte[] vbuffer,int vlen);
+
+    public native int changeFilter(int curFilter);
 
     public native int close();
 }

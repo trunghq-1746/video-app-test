@@ -17,11 +17,19 @@ JNIEXPORT jint JNICALL Java_com_david_camerapush_ffmpeg_FFmpegHandler_init
 
 /*
  * Class:     com_david_camerapush_ffmpeg_FFmpegHandler
+ * Method:    changeFilter
+ * Signature: (Ljava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL Java_com_david_camerapush_ffmpeg_FFmpegHandler_changeFilter
+(JNIEnv *, jobject, jint);
+
+/*
+ * Class:     com_david_camerapush_ffmpeg_FFmpegHandler
  * Method:    pushCameraData
  * Signature: ([BI[BI[BI)I
  */
 JNIEXPORT jint JNICALL Java_com_david_camerapush_ffmpeg_FFmpegHandler_pushCameraData
-  (JNIEnv *, jobject, jbyteArray, jint, jbyteArray, jint, jbyteArray, jint);
+  (JNIEnv *, jobject, jint, jbyteArray, jint, jbyteArray, jint, jbyteArray, jint);
 
 /*
  * Class:     com_david_camerapush_ffmpeg_FFmpegHandler
