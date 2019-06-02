@@ -300,6 +300,26 @@ public class Camera2BasicFragment extends Fragment
                 }
             }
             FFmpegHandler.getInstance().pushCameraData(0, yBytes, yBytes.length, uBytes, uBytes.length, vBytes, vBytes.length);
+
+            byte[] bytes = mySurfaceView.getNV21(width, height, mySurfaceView.getMyBitmap());
+            int yIndex = 0;
+            uIndex = 0;
+            vIndex = 0;
+            int index = 0;
+            int frameSize = width * height;
+            for (int j = 0; j < height; j ++) {
+                for (int i = 0; i < width; i ++) {
+                    yBytes[yIndex++] = bytes[index];
+                    if (j % 2 == 0 && index % 2 == 0) {
+                        vBytes[vIndex] = bytes[vIndex + frameSize];
+                        vIndex ++;
+                        uBytes[uIndex] = bytes[uIndex + frameSize + 1];
+                        uIndex ++;
+                    }
+                    index ++;
+                }
+            }
+            FFmpegHandler.getInstance().pushCameraData(1, yBytes, yBytes.length, uBytes, uBytes.length, vBytes, vBytes.length);
             image.close();
         }
 
@@ -407,6 +427,8 @@ public class Camera2BasicFragment extends Fragment
 
     private int curFilter = 0;
 
+    private MySurfaceView mySurfaceView;
+
     /**
      * Shows a {@link Toast} on the UI thread.
      *
@@ -489,6 +511,7 @@ public class Camera2BasicFragment extends Fragment
         view.findViewById(R.id.info).setOnClickListener(this);
         view.findViewById(R.id.buttonChangeFilter).setOnClickListener(this);
         mTextureView = (AutoFitTextureView) view.findViewById(R.id.texture);
+        mySurfaceView = (MySurfaceView) view.findViewById(R.id.mySurfaceView);
     }
 
     @Override

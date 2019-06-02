@@ -23,13 +23,14 @@ AVCodec *pCodec;
 AVPacket enc_pkt;
 AVFrame *pFrameYUV;
 AVFilterContext *buffersink_ctx;
-AVFilterContext *buffersrc_ctx[];
+AVFilterContext **buffersrc_ctx;
 AVFilterGraph *filter_graph;
 AVFilter *buffersrc;
 AVFilter *buffersink;
 AVFrame* picref;
 int filter_change = 1;
-const char *filter_descr = "curves=vintage";
+int videoInputs = 2;
+const char *filter_descr = "[0:v][1:v]overlay=0:0[v]";
 const char *filter_logo = "movie=logo.jpeg[wm];[in][wm]overlay=5:5[out]";
 const char *filter_mirror = "crop=iw/2:ih:0:0,split[left][tmp];[tmp]hflip[right];[left]pad=iw*2[a];[a][right]overlay=w";
 const char *filter_negate = "negate[out]";
@@ -44,7 +45,6 @@ typedef enum{
     FILTER_SPLIT4,
     FILTER_VINTAGE
 }FILTERS;
-int videoInputs = 1;
 int count = 0;
 int yuv_width;
 int yuv_height;
@@ -116,7 +116,13 @@ static int apply_filters(/*AVFormatContext *ifmt_ctx*/)
 {
     char args[512];
     int ret;
-    AVFilterInOut *outputs[videoInputs];
+    AVFilterInOut **outputs;
+    outputs = av_calloc((size_t) (videoInputs + 1), sizeof(AVFilterInOut*));
+    if (!outputs)
+    {
+        printf("Cannot alloc int\n");
+        return -1;
+    }
     /*if (!outputs) {
         printf("Cannot alloc output\n");
         return -1;
@@ -124,7 +130,7 @@ static int apply_filters(/*AVFormatContext *ifmt_ctx*/)
     AVFilterInOut *inputs = avfilter_inout_alloc();
     if (!inputs)
     {
-        printf("Cannot alloc input\n");
+        printf("Cannot alloc out\n");
         return -1;
     }
 
@@ -166,7 +172,7 @@ static int apply_filters(/*AVFormatContext *ifmt_ctx*/)
         }
         outputs[i] = avfilter_inout_alloc();
         if (!outputs[i]) {
-            printf("Cannot alloc output\n");
+            printf("Cannot alloc input\n");
             return -1;
         }
         ret = avfilter_graph_create_filter(&buffersrc_ctx[i], buffersrc, name,
@@ -184,7 +190,7 @@ static int apply_filters(/*AVFormatContext *ifmt_ctx*/)
         }
     }
 
-    char *name = videoInputs > 1 ? ":v" : "out";
+    char *name = videoInputs > 1 ? "v" : "out";
     ret = avfilter_graph_create_filter(&buffersink_ctx, buffersink, name,
                                        NULL, NULL, filter_graph);
     if (ret < 0) {
@@ -204,44 +210,6 @@ static int apply_filters(/*AVFormatContext *ifmt_ctx*/)
     avfilter_inout_free(outputs);
 
     return 0;
-
-    /*ret = avfilter_graph_create_filter(&buffersrc_ctx, buffersrc, "in",
-                                       args, NULL, filter_graph);
-    if (ret < 0) {
-        printf("Cannot create buffer source\n");
-        return ret;
-    }
-
-    *//* buffer video sink: to terminate the filter chain. *//*
-    ret = avfilter_graph_create_filter(&buffersink_ctx, buffersink, "out",
-                                       NULL, NULL, filter_graph);
-    if (ret < 0) {
-        printf("Cannot create buffer sink\n");
-        return ret;
-    }
-
-    *//* Endpoints for the filter graph. *//*
-    outputs->name = av_strdup("in");
-    outputs->filter_ctx = buffersrc_ctx;
-    outputs->pad_idx = 0;
-    outputs->next = NULL;
-
-    inputs->name = av_strdup("out");
-    inputs->filter_ctx = buffersink_ctx;
-    inputs->pad_idx = 0;
-    inputs->next = NULL;
-
-    if ((ret = avfilter_graph_parse_ptr(filter_graph, filter_descr,
-                                        &inputs, &outputs, NULL)) < 0)
-        return ret;
-
-    if ((ret = avfilter_graph_config(filter_graph, NULL)) < 0)
-        return ret;
-
-    avfilter_inout_free(&inputs);
-    avfilter_inout_free(&outputs);
-
-    return 0;*/
 }
 
 JNIEXPORT jint JNICALL Java_com_david_camerapush_ffmpeg_FFmpegHandler_init
@@ -249,6 +217,7 @@ JNIEXPORT jint JNICALL Java_com_david_camerapush_ffmpeg_FFmpegHandler_init
 
     buffersrc = (AVFilter *) avfilter_get_by_name("buffer");
     buffersink = (AVFilter *) avfilter_get_by_name("buffersink");
+    buffersrc_ctx = av_calloc((size_t) (videoInputs + 1), sizeof(AVFilterContext));
 
     const char *out_url = (*jniEnv)->GetStringUTFChars(jniEnv, url, 0);
 
@@ -373,7 +342,7 @@ JNIEXPORT jint JNICALL Java_com_david_camerapush_ffmpeg_FFmpegHandler_pushCamera
         apply_filters();
     }
     filter_change = 0;
-    if (av_buffersrc_add_frame(buffersrc_ctx[0], pFrameYUV) < 0) {
+    if (av_buffersrc_add_frame(buffersrc_ctx[n], pFrameYUV) < 0) {
         printf("Error while feeding the filtergraph\n");
         return -1;
     }
@@ -451,6 +420,12 @@ JNIEXPORT jint JNICALL Java_com_david_camerapush_ffmpeg_FFmpegHandler_close
         avformat_free_context(ofmt_ctx);
         ofmt_ctx = NULL;
     }
+    if (filter_graph) {
+        avfilter_graph_free(&filter_graph);
+        buffersink_ctx = NULL;
+        buffersrc_ctx = NULL;
+    }
+    filter_change = 1;
     return 0;
 }
 
